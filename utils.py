@@ -1,0 +1,59 @@
+import torch
+import numpy as np
+
+def compute_gae(rewards, value, dones, gamma, gae_lambda):
+    """
+    Compute Generalized Advantage Estimation (GAE).
+    
+    :param rewards: 1D rewards tensors of length T
+    :param value: 1D value tensors of length T 
+    :param dones: 1D done tensors of length T
+    :param gamma: discount factor -> discount future rewards
+    :param gae_lambda: lambda for GAE -> discount future error
+    
+    :return: tuple of (advantages, returns), both tensors of length T
+    """
+    T = rewards.shape[0]  # length of trajectory
+    advantages = torch.zeros(T, dtype=torch.float32, device=rewards.device)
+    last_adv = 0.0
+    last_value = 0.0
+
+    # Iterate backwards so each step can use the value from the next state
+    for t in reversed(range(T)):
+        next_value = last_value if t == T - 1 else value[t + 1]
+        next_done = dones[t] if t == T - 1 else dones[t + 1]
+        mask = 1.0 - next_done.float()
+
+        delta = rewards[t] + gamma * next_value * mask - value[t]
+        last_adv = delta + gamma * gae_lambda * mask * last_adv
+        advantages[t] = last_adv
+
+    returns = advantages + value
+    return advantages, returns
+
+def evaluate_cartpole(env, policy, device, num_episodes=3):
+    total = 0.0
+    for _ in range(num_episodes):
+        obs, info = env.reset()
+        done = False
+        ep_reward = 0.0
+        while not done:
+            obs_tensor = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
+            with torch.no_grad():
+                logits, value = policy(obs_tensor)
+                dist = torch.distributions.Categorical(logits=logits)
+                action = dist.probs.argmax(dim=-1)  # greedy
+            action_np = action.cpu().numpy()[0]
+            obs, reward, terminated, truncated, info = env.step(action_np)
+            done = terminated or truncated
+            ep_reward += reward
+        total += ep_reward
+    return total / num_episodes
+
+def save_stats(path, timesteps, rewards):
+    np.savez(
+        path,
+        timesteps=np.array(timesteps),
+        rewards=np.array(rewards),
+    )
+
