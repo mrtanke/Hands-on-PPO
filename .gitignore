@@ -1,0 +1,83 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+.env/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.code-workspace
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- RL / ML artifacts ---
+# TensorBoard
+runs/
+
+# Weights & Biases
+wandb/
+
+# Logs
+logs/
+*.log
+
+# Checkpoints / models
+checkpoints/
+weights/
+models/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Data / recordings
+*.npz
+*.npy
+*.pkl
+*.pickle
+*.csv
+*.parquet
+*.h5
+*.hdf5
+
+# Gym recordings (videos/monitor)
+*.mp4
+*.avi
+*.mov
+**/videos/
+**/monitor.csv
+
+# Saved plots
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# Local secrets
+.env.local
