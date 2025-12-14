@@ -7,6 +7,13 @@ import numpy as np
 
 from models import PolicyValueNet
 from utils import compute_gae, evaluate_cartpole, save_stats
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env_id", type=str, default="CartPole-v1")
+    parser.add_argument("--total_timesteps", type=int, default=50_000)
+    return parser.parse_args()
 
 def collect_trajectories(env, policy, num_steps, device):
     """
@@ -33,7 +40,7 @@ def collect_trajectories(env, policy, num_steps, device):
         with torch.no_grad():
             action, log_prob, value, dist = policy.get_action_and_value(obs_tensor)
 
-        action_np = action.cpu().numpy()[0]
+        action_np = int(action.item())
         next_obs, reward, terminated, truncated, info = env.step(action_np)
         done = terminated or truncated
 
@@ -47,14 +54,21 @@ def collect_trajectories(env, policy, num_steps, device):
         obs = next_obs
         if done:
             obs, info = env.reset()
+
+    # Bootstrap value for the last observation (needed when the rollout ends mid-episode).
+    with torch.no_grad():
+        last_obs_tensor = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
+        _, last_value = policy(last_obs_tensor)
+        last_value = last_value.squeeze(0)
     
     data = {
-        "obs": torch.tensor(obs_list, dtype=torch.float32, device=device),
-        "actions": torch.tensor(actions_list, dtype=torch.int64, device=device),
-        "rewards": torch.tensor(rewards_list, dtype=torch.float32, device=device),
-        "dones": torch.tensor(done_list, dtype=torch.float32, device=device),
-        "values": torch.tensor(value_list, dtype=torch.float32, device=device),
-        "log_probs": torch.tensor(log_probs_list, dtype=torch.float32, device=device),
+        "obs": torch.as_tensor(np.asarray(obs_list), dtype=torch.float32, device=device),
+        "actions": torch.as_tensor(np.asarray(actions_list), dtype=torch.int64, device=device),
+        "rewards": torch.as_tensor(np.asarray(rewards_list), dtype=torch.float32, device=device),
+        "dones": torch.as_tensor(np.asarray(done_list), dtype=torch.float32, device=device),
+        "values": torch.as_tensor(np.asarray(value_list), dtype=torch.float32, device=device),
+        "log_probs": torch.as_tensor(np.asarray(log_probs_list), dtype=torch.float32, device=device),
+        "last_value": last_value,
     }
     return data
 
@@ -110,16 +124,23 @@ def ppo_update(policy, optimizer, data, ppo_hyperparams):
 
             optimizer.zero_grad()
             loss.backward()
+            max_grad_norm = ppo_hyperparams.get("max_grad_norm", None)
+            if max_grad_norm is not None:
+                torch.nn.utils.clip_grad_norm_(policy.parameters(), max_grad_norm)
             optimizer.step()
 
-def train_ppo_cartpole():
-    env = gym.make("CartPole-v1", render_mode="human")
+def train_ppo(env_id: str, total_timesteps: int = 50_000):
+    train_env = gym.make(env_id)
+    eval_env = gym.make(env_id)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    obs_dim = train_env.observation_space.shape[0]
+    act_dim = train_env.action_space.n
 
     # Define the neural network that contains both policy and value function
     policy = PolicyValueNet(
-        obs_dim=env.observation_space.shape[0], # environment state -> input dimension
-        act_dim=env.action_space.n, # number of actions -> output dimension
+        obs_dim=obs_dim, # environment state -> input dimension
+        act_dim=act_dim, # number of actions -> output dimension
     ).to(device)
 
     optimizer = optim.Adam(policy.parameters(), lr=3e-4)
@@ -131,16 +152,16 @@ def train_ppo_cartpole():
         clip_range=0.2,
         train_epochs=4,
         batch_size=64,
-        ent_coef=0.0,
+        ent_coef=0.01,
         vf_coef=0.5,
+        max_grad_norm=0.5,
     )
 
-    total_timesteps = 50_000
     timesteps_collected = 0
     num_steps_per_rollout = 2048
 
     episode_rewards = []
-    obs, info = env.reset()
+    obs, info = train_env.reset()
 
     # history for logging
     timesteps_history = []
@@ -148,7 +169,7 @@ def train_ppo_cartpole():
 
     while timesteps_collected < total_timesteps:
         # Step 1: collect trajectories
-        data = collect_trajectories(env, policy, num_steps_per_rollout, device=device)
+        data = collect_trajectories(train_env, policy, num_steps_per_rollout, device=device)
         timesteps_collected += num_steps_per_rollout
         
         # Step 2: compute advantages and returns
@@ -158,6 +179,7 @@ def train_ppo_cartpole():
             dones=data["dones"],
             gamma=ppo_hyperparams["gamma"],
             gae_lambda=ppo_hyperparams["lam"],
+            last_value=data["last_value"],
         )
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8) # normalize advantages
         data["advantages"] = advantages
@@ -167,16 +189,18 @@ def train_ppo_cartpole():
         ppo_update(policy, optimizer, data, ppo_hyperparams)
 
         # Step 4: log progress
-        eval_rewards = evaluate_cartpole(env, policy, device)
+        eval_rewards = evaluate_cartpole(eval_env, policy, device)
         episode_rewards.append(eval_rewards)
         timesteps_history.append(timesteps_collected)
         rewards_history.append(eval_rewards)
         print(f"Timesteps: {timesteps_collected}, Eval Reward: {eval_rewards}")
 
     # Save training statistics
-    save_stats("cartpole_training_stats.npz", timesteps_history, rewards_history)
+    save_stats(f"{env_id}_training_stats.npz", timesteps_history, rewards_history)
 
-    env.close()
+    train_env.close()
+    eval_env.close()
 
 if __name__ == "__main__":
-    train_ppo_cartpole()
+    args = parse_args()
+    train_ppo(env_id=args.env_id, total_timesteps=args.total_timesteps)

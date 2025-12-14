@@ -73,11 +73,5 @@ models/
 **/videos/
 **/monitor.csv
 
-# Saved plots
-*.png
-*.jpg
-*.jpeg
-*.svg
-
 # Local secrets
 .env.local
