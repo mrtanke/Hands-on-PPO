@@ -2,7 +2,7 @@
 
 Minimal PPO implementations for:
 - **Discrete action**: `CartPole-v1`, `Acrobot-v1`
-- **Continuous action**: `Pendulum-v1`
+- **Continuous action**: `Pendulum-v1`, `Walker2d-v5`
 
 ## Install
 
@@ -28,6 +28,7 @@ python main.py --env_id Acrobot-v1 --total_timesteps 500000
 
 ```powershell
 python main.py --env_id Pendulum-v1 --mode continuous --total_timesteps 300000
+python main.py --env_id Pendulum-v1 --mode continuous --total_timesteps 200000
 ```
 
 ## Outputs
