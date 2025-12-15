@@ -1,6 +1,6 @@
 # PPO Training Logic (rl-basics)
 
-This folder contains a minimal PPO implementation for CartPole.
+This project contains a minimal PPO implementation for CartPole.
 
 ## Main Components
 

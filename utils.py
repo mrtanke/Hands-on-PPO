@@ -61,3 +61,29 @@ def save_stats(path, timesteps, rewards):
         timesteps=np.array(timesteps),
         rewards=np.array(rewards),
     )
+
+def evaluate_pendulum(env, policy, device, num_episodes=5):
+    total = 0.0
+    action_low = env.action_space.low
+    action_high = env.action_space.high
+
+    for _ in range(num_episodes):
+        obs, info = env.reset()
+        done = False
+        ep_reward = 0.0
+        while not done:
+            obs_tensor = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
+
+            with torch.no_grad():
+                mean, log_std, value = policy.forward(obs_tensor)
+                std = torch.exp(log_std)
+                dist = torch.distributions.Normal(mean, std)
+                action = dist.mean  # deterministic: use mean
+            action_np = action.cpu().numpy()[0]
+            action_np = np.clip(action_np, action_low, action_high)
+
+            obs, reward, terminated, truncated, info = env.step(action_np)
+            done = terminated or truncated
+            ep_reward += reward
+        total += ep_reward
+    return total / num_episodes
