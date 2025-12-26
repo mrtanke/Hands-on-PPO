@@ -24,7 +24,7 @@ DEFAULT_CONFIG = {
     "Pendulum-v1": dict(total_timesteps=2_000_000, lr=3e-4, num_steps=2048,
                          ppo=dict(ent_coef=0.005, train_epochs=6)),
     "Walker2d-v5": dict(
-        total_timesteps=2_000_000,
+        total_timesteps=4_000_000,
         lr=3e-4,
         num_steps=4096,
         use_obs_norm=True,
