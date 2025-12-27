@@ -7,8 +7,8 @@ import imageio
 import numpy as np
 import torch
 
-from models import ContinuousPolicyValueNet
-from utils import ObsNormalizer
+from ..models import ContinuousPolicyValueNet
+from ..utils import ObsNormalizer
 
 
 def load_policy(model_path: Path, env_id: str, device: torch.device, obs_dim: int, act_dim: int):

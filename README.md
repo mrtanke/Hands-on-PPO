@@ -15,7 +15,7 @@ pip install -r requirements.txt
 
 ## Run training
 
-`main.py` is the main entrypoint and can auto-detect discrete vs continuous environments.
+`main.py` now dispatches into the reorganized `algorithms/ppo` package, which contains all PPO-related code paths (training loops, models, utilities, and helper tools). SAC-specific work should live under `algorithms/sac`.
 
 ### Discrete (CartPole / Acrobot)
 
@@ -39,7 +39,11 @@ python main.py --env_id Walker-v5 --mode continuous --total_timesteps 1000000
 
 ## Files
 
-- `main.py`: training loops + CLI (discrete/continuous)
-- `ppo_agent.py`: PPO update + rollout collection helpers
-- `models.py`: policy/value networks (discrete + continuous)
-- `utils.py`: GAE, evaluation helpers, stats saving
+- `main.py`: lightweight entrypoint that calls the PPO CLI package.
+- `algorithms/ppo/cli.py`: PPO training loops + CLI (discrete/continuous).
+- `algorithms/ppo/agent.py`: PPO update + rollout collection helpers.
+- `algorithms/ppo/models.py`: policy/value networks (discrete + continuous).
+- `algorithms/ppo/utils.py`: GAE, evaluation helpers, stats saving.
+- `algorithms/ppo/tools/`: ancillary tooling such as plotting curves or recording Walker rollouts.
+- `algorithms/ppo/examples/`: environment-specific PPO scripts (e.g., SB3 baselines for CartPole, Pendulum, Walker).
+- `algorithms/sac/`: placeholder for future SAC implementation artifacts.

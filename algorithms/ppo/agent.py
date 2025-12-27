@@ -1,9 +1,5 @@
-import gymnasium as gym
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import typing as Tuple
 import numpy as np
+import torch
 
 
 def ppo_update(policy, optimizer, data, ppo_hyperparams):
